@@ -37,38 +37,4 @@ results/      Metric artifacts (JSON/CSV) and plots from the reported runs
 docs/         Supplementary notes and paper text blocks
 ```
 
-## Reproducing the numbers
 
-1. **Environment:** a Kaggle notebook with 2× T4 GPUs (16 GB each), internet on. Set your
-   `HF_TOKEN` in Kaggle *Secrets* (no keys are hard-coded anywhere in this repo).
-2. **Train the student:** run `notebooks/NOTE-RL_MedQA_v3_qwen7b.ipynb`. It saves a LoRA
-   adapter (`best_student_adapter/`).
-3. **Order-invariant readout:** run `notebooks/CALM_PI_MedQA_7b.ipynb`. Point `ADAPTER_SRC`
-   at your trained adapter (or add it as a Kaggle Input; the loader auto-detects
-   `best_student_adapter`). Produces `pi_results.json` (base vs PriDe vs cyclic-marginalized
-   with bootstrap CIs). ~50–90 min, no token generation.
-4. **Reflective routing:** run `notebooks/CALM_R3_final.ipynb`. It calibrates generation
-   speed, sizes the run to your remaining budget, selects the routing threshold on
-   validation, and reports paired CIs (`phaseA.json`, `phaseC.json`).
-
-## Data and model weights
-
-- **Data:** MedQA-USMLE (4-option). The notebooks load it directly; splits are the official
-  dev/test files with a fixed seed (released with the code).
-- **Trained adapter (~15 GB base + LoRA):** **not stored in this repo.** Host it on the
-  Hugging Face Hub or as a Kaggle dataset and link it here:
-  `ADAPTER: <add your HF/Kaggle URL>`. The evaluation notebooks accept a Hub id or a local
-  `best_student_adapter` path.
-
-## Paper
-
-`paper/CALM_paper.tex` is the consolidated source; `paper/AI.tex` is the submission-ready
-(human-edited) version. Build with any IEEEtran-capable LaTeX toolchain; figures are in
-`paper/`. The diagram source is `paper/CALM_architecture.drawio` (export to
-`architecture.png`).
-
-## Notes
-
-- A generative AI assistant was used for grammar/copy-editing and for scaffolding code; all
-  experimental design, runs, analysis, and conclusions are the authors' own.
-- License: add your choice (e.g. MIT) before making the repository public.
