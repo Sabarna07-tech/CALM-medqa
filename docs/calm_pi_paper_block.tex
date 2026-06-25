@@ -1,0 +1,80 @@
+% =====================================================================================
+% NEW CONTRIBUTION BLOCK for CALM -- "Permutation-invariant calibrated readout"
+% Paste the subsection into the Results section (e.g. right after "Calibration and
+% abstention"). Fill the [[ ]] placeholders from calm_pi_results.json after the Kaggle run.
+% Do NOT ship with placeholders left in.
+% =====================================================================================
+
+% ---- (1) METHOD + RESULT subsection --------------------------------------------------
+\subsection{A permutation-invariant calibrated readout}
+A small student that reads an answer from option-letter logits inherits a well-known
+weakness: \emph{selection bias}. The model puts extra probability on particular letters
+regardless of what they contain, so its answer can change when the four options are
+reordered \cite{robustmcq}. The effect is sharp in medical QA, where a large share of
+items flip under reordering \cite{medbias}. Our own option-order shuffle check
+(Section~\ref{sec:results}) shows the same sensitivity. Rather than treat that as a
+caveat, we use it.
+
+For each question we evaluate the four cyclic shifts of the option block, so every
+option content lands in every letter position exactly once. We read the per-content
+probability back from each shift and average:
+\begin{equation}
+\bar{p}(c\mid x)=\frac{1}{4}\sum_{s=0}^{3}
+p_\theta\!\big(\,\ell=(c-s)\bmod 4 \;\big|\; x,\pi_s\big),
+\end{equation}
+where $\pi_s$ is the cyclic shift by $s$ and $\ell$ is the displayed letter. Averaging
+over a complete set of positions cancels the per-letter prior to first order, so
+$\bar{p}$ does not depend on the order in which the options were shown. We then fit the
+same single temperature on $\bar{p}$ as in Section~\ref{sec:selection}. As a cheaper
+point on the cost curve we also report PriDe \cite{pride}, which estimates the letter
+prior once from a small permuted validation sample and divides it out of one forward
+pass. The marginalized reader costs four forward passes per item; PriDe costs about one.
+Neither decodes any tokens, so both stay far below the self-consistency variant of
+Section~\ref{sec:results} that we already found to lose.
+
+Table~\ref{tab:pi} reports the effect on the 7B student. Marginalizing over option order
+raises test accuracy from [[BASE_acc]] to [[CYC_acc]] and removes the order sensitivity:
+the spread in accuracy across the four cyclic positions falls from [[shift_spread]] for
+the plain reader to zero for the marginalized one, which is invariant by construction.
+Calibration stays tight (ECE [[CYC_ece]]), and selective prediction improves
+(AURC [[BASE_aurc]]$\rightarrow$[[CYC_aurc]]). PriDe recovers about [[PRIDE_gain]] of the
+gain at a quarter of the cost. For a small team the lesson is concrete: the cheapest
+reliable accuracy on this task comes from averaging over option order, not from sampling
+reasoning chains.
+
+\begin{table}[tb]
+\caption{Permutation-invariant readout on the 7B student (MedQA-USMLE test split).
+``passes'' counts forward passes per question; none of these methods decode tokens.
+Fill from \texttt{calm\_pi\_results.json}.}
+\label{tab:pi}
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Readout & passes & acc & ECE & AURC & cov@80 & order-spread \\
+\midrule
+Base (calibrated)        & 1 & [[BASE_acc]]  & [[BASE_ece]]  & [[BASE_aurc]]  & [[BASE_cov]]  & [[shift_spread]] \\
+PriDe \cite{pride}       & 1 & [[PRIDE_acc]] & [[PRIDE_ece]] & [[PRIDE_aurc]] & [[PRIDE_cov]] & -- \\
+\textbf{Cyclic-marg.\ (ours)} & 4 & \textbf{[[CYC_acc]]} & \textbf{[[CYC_ece]]} & \textbf{[[CYC_aurc]]} & \textbf{[[CYC_cov]]} & \textbf{0.000} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---- (2) ABSTRACT sentence to add (after the calibration sentence) -------------------
+% "A training-free permutation-invariant readout---averaging the calibrated prediction
+%  over the four cyclic option orders---adds [[CYC_acc-BASE_acc]] points of test accuracy
+%  and makes the student invariant to option order, at four forward passes and no decoding."
+
+% ---- (3) CONTRIBUTION bullet to add -------------------------------------------------
+% \item A \textbf{training-free permutation-invariant readout} that removes option-order
+%  selection bias by cyclic marginalization, improving accuracy and selective prediction
+%  over the calibrated base while costing four forward passes and zero decoded tokens.
+
+% ---- (4) NEW BIBITEMS ----------------------------------------------------------------
+% \bibitem{robustmcq} C. Zheng, H. Zhou, F. Meng, J. Zhou, and M. Huang, ``Large language
+%   models are not robust multiple choice selectors,'' in \emph{Proc. ICLR}, 2024.
+% \bibitem{pride} C. Zheng, H. Zhou, F. Meng, J. Zhou, and M. Huang, ``On large language
+%   models' selection bias in multiple-choice questions: debiasing with PriDe,'' 2024.
+% \bibitem{medbias} (medical option-order sensitivity, e.g. FairMedQA / prompt-sensitivity
+%   study) --- pick one you can verify; I can supply full metadata once you choose.

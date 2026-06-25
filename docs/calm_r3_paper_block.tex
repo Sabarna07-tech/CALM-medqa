@@ -1,0 +1,60 @@
+% =====================================================================================
+% CALM-R3 paper block. Fill [[...]] from calm_r3/phase0_results.json (+ phase1_routed.json).
+% Use ONLY if Phase 0 prints GO. If NO-GO, see the "negative-result" paragraph at the end.
+% =====================================================================================
+
+\subsection{Reflective routing: learning when not to reason}
+Two of our findings point the same way: confidence predicts correctness, and a single
+calibrated pass beats five-sample self-consistency. Together they suggest a policy rather
+than a fixed pipeline---reason only when the fast answer is in doubt. We route on the
+calibrated confidence of Section~\ref{sec:selection}. When the top option clears a
+threshold $\tau$ the fast logit read is returned directly; otherwise the question is sent
+to a reasoning path that produces a short differential before re-reading the option
+logits. A second LoRA adapter, trained on the hard slice with a correction objective
+\begin{equation}
+\mathcal{L}=\mathrm{CE}(p_{\text{ref}},y)\;\mathbb{1}[\text{fast wrong}]
++\mu\,\mathrm{KL}\!\big(\overline{p_{\text{fast}}}\,\Vert\,p_{\text{ref}}\big)\,\mathbb{1}[\text{fast right}],
+\end{equation}
+supplies that path, while the original adapter serves the fast path; both are tiny, so the
+pair fits one T4. The objective supervises reasoning toward the gold answer exactly where
+the fast pass fails, and otherwise keeps it consistent with the confident fast prediction.
+
+\subsection{Adaptive compute}
+Because only a fraction of questions are routed to reasoning, the system trades accuracy
+against decoding cost along a frontier. We sweep $\tau$ and report routed accuracy against
+the mean number of generated tokens per question (Fig.~\ref{fig:r3}). At
+$\tau=[[best_tau]]$, CALM-R3 reaches [[routed_acc]] accuracy while reasoning on only
+[[frac_reasoned]]\% of items---[[delta_vs_fast]] points over the fast-only reader and
+within [[gap_vs_reason]] of always-reasoning, at roughly [[token_pct]]\% of its decoding
+tokens. The lesson for a small budget is that compute should follow uncertainty.
+
+\begin{table}[tb]
+\caption{Reflective routing on the 7B student (test subset, $n=[[n]]$). Fill from
+\texttt{calm\_r3/phase0\_results.json} and \texttt{phase1\_routed.json}.}
+\label{tab:r3}
+\centering
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Policy & acc & \% reasoned & tokens/q \\
+\midrule
+Always fast            & [[fast_acc]]   & 0   & 0 \\
+Always reason          & [[reason_acc]] & 100 & [[reason_tok]] \\
+\textbf{CALM-R3 ($\tau{=}[[best_tau]]$)} & \textbf{[[routed_acc]]} & [[frac_reasoned]] & [[routed_tok]] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% --- contribution bullet ---
+% \item A \textbf{confidence-routed reflective reader} that reasons only on uncertain
+%  items, matching or beating the fast reader while spending a fraction of the decoding
+%  tokens of an always-reason policy.
+
+% --- IF PHASE 0 IS NO-GO, use this honest negative result instead of the above ---
+% \subsection{When reasoning does not help}
+% We tested a confidence-routed reflective reader that sends only low-confidence items to a
+% chain-of-thought path. On this student the reasoning path did not exceed the fast read on
+% the uncertain subset ([[reason_helps_bottom30]] absolute), so routing gave no accuracy
+% gain. We read this as evidence that one-shot fine-tuning erodes the base model's
+% reasoning, and that for this regime calibration and abstention---not extra reasoning---are
+% the reliable levers.
