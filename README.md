@@ -24,7 +24,7 @@ abstention + order-invariant readout.**
 ## Repository layout
 
 ```
-paper/        LaTeX sources (CALM_paper.tex = consolidated; AI.tex = humanized submission),
+paper/        LaTeX sources,
               the architecture diagram (.drawio + .png), and paper figures
 notebooks/    Kaggle-ready notebooks (2×T4):
                 NOTE-RL_MedQA_v3_qwen7b.ipynb     – main 7B QLoRA training pipeline
